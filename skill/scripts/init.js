@@ -28,7 +28,18 @@ export async function init({ skillRoot, answersPath }) {
 
   const dataDir = config.project?.data_dir || path.join(process.env.HOME, "marketing", config.project?.slug || "unnamed-project");
 
-  heading("Setting things up");
+  const existingConfigPath = path.join(dataDir, "config.yaml");
+  const isExisting = fs.existsSync(existingConfigPath);
+  if (isExisting) {
+    const backupPath = path.join(dataDir, `config.yaml.bak-${Date.now()}`);
+    fs.copyFileSync(existingConfigPath, backupPath);
+    heading("Updating an existing project");
+    info(`This project was already set up at ${dataDir}.`);
+    info(`Its previous settings are backed up at ${path.basename(backupPath)} before anything is overwritten.`);
+    info(`Prospects, drafts, and send history in the database are untouched either way.`);
+  } else {
+    heading("Setting things up");
+  }
   const scaffoldSpinner = spinner("Creating your local project folder and database...").start();
   fs.mkdirSync(dataDir, { recursive: true });
   fs.mkdirSync(path.join(dataDir, "pending_review"), { recursive: true });

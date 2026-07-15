@@ -1,7 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import yaml from "js-yaml";
-import { getDefaultDataDir } from "./registry.js";
+import { getDefaultDataDir, readRegistry } from "./registry.js";
+import { chalk } from "./ui.js";
 
 // An error meant to be read by a non-technical user: a plain-language
 // "what happened" plus a concrete "what to do next" — no stack traces,
@@ -21,9 +22,24 @@ export function resolveDataDir(dataDir) {
   if (fs.existsSync(path.join(process.cwd(), "config.yaml"))) return process.cwd();
 
   // Fall back to the default project registered by the most recent `init`
-  // (or whichever project was marked default) at ~/.local-marketing/projects.json
+  // (or whichever project was marked default) at ~/.local-marketing/projects.json.
+  // Since this is an implicit choice the user didn't type, always announce it —
+  // this is the one place a command could silently act on the wrong project if
+  // more than one is set up on this machine.
   const defaultDir = getDefaultDataDir();
-  if (defaultDir && fs.existsSync(path.join(defaultDir, "config.yaml"))) return defaultDir;
+  if (defaultDir && fs.existsSync(path.join(defaultDir, "config.yaml"))) {
+    const registry = readRegistry();
+    const projectCount = Object.keys(registry.projects).length;
+    const label = registry.defaultSlug || path.basename(defaultDir);
+    if (projectCount > 1) {
+      console.log(
+        chalk.dim(`  Using project "${label}" (${defaultDir}) — you have ${projectCount} projects set up; pass a path to use a different one.\n`)
+      );
+    } else {
+      console.log(chalk.dim(`  Using project "${label}" (${defaultDir})\n`));
+    }
+    return defaultDir;
+  }
 
   throw new FriendlyError(
     "I can't find a local-marketing project to work with yet.",

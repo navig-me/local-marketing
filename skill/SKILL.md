@@ -41,6 +41,18 @@ just a discoverable shortcut, not a different code path.
 
 ## Init interview (run first, once)
 
+Before starting, check whether this project already has a data directory —
+look for `config.yaml` at the expected path, or check `~/.local-marketing/projects.json`
+for a matching slug. If one exists, do not silently re-run the full
+interview and overwrite it. Ask the user directly: do they want to (a)
+update one specific thing (e.g. "just change the SMTP provider" — read the
+existing `config.yaml`, ask only about what's changing, pass the merged
+result to `init`), or (b) actually redo the whole setup from scratch. Either
+way `scripts/init.js` itself backs up the previous `config.yaml` before
+overwriting and never touches the SQLite database (prospects, drafts, send
+history persist across re-runs regardless) — but the interview shouldn't
+make the user re-answer nine questions just to fix one setting.
+
 Follow the grilling pattern: one question at a time, offer a sensible default
 based on what you can find, wait for their answer before continuing. Do not
 batch questions — including sub-parts of the same question (e.g. "from
