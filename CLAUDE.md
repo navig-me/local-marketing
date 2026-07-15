@@ -9,8 +9,10 @@ marketing/outreach skill. See `README.md` for the product description and
 - `bin/local-marketing.js` — CLI entrypoint (`npx @navig-me/local-marketing ...`).
 - `skill/` — the actual skill: `SKILL.md` (instructions), `scripts/` (node
   helpers: db, init, review, approve, send, report, install), `playbooks/`
-  (research/copy-draft/triage prompts), `db/schema.sql`, `config/` (YAML
-  templates), `docs/SMTP_SETUP.md`.
+  (research/copy-draft/triage prompts), `commands/` (one markdown file per
+  subcommand — source for both Claude Code slash commands and Codex CLI
+  custom prompts, see below), `db/schema.sql`, `config/` (YAML templates),
+  `docs/SMTP_SETUP.md`.
 - `.claude/skills/local-marketing/SKILL.md` — thin Claude Code native
   wrapper that just points at `skill/SKILL.md`. Keep it a pointer, not a
   fork — the fallback used by other agents must stay fully-featured, so
@@ -40,3 +42,13 @@ marketing/outreach skill. See `README.md` for the product description and
   once `init` has run once. `resolveDataDir` (`util.js`) is the single place
   that falls back through: explicit arg → cwd's config.yaml → registry
   default. Keep new commands going through it rather than requiring a path.
+- Install targets (`skill/scripts/install.js`): Claude Code gets its own
+  `~/.claude/skills/` copy plus slash commands in `~/.claude/commands/`;
+  Codex CLI and everything else share `~/.agents/skills/` — the open Agent
+  Skills standard's cross-tool location (agentskills.io), read by Codex,
+  Gemini CLI, Cursor, GitHub Copilot, and 30+ other tools without a
+  per-agent copy. Codex CLI additionally gets custom prompts in
+  `~/.codex/prompts/` (flat-named `local-marketing-<command>`, since Codex
+  has no command-namespacing). If you add a new subcommand, add its markdown
+  file to `skill/commands/` and it's automatically picked up by both the
+  Claude Code and Codex CLI install paths — no other wiring needed.

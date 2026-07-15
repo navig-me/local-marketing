@@ -67,14 +67,23 @@ npx @navig-me/local-marketing install
 
 This prompts you to choose an agent target:
 
-1. **Claude Code** — installs to `~/.claude/skills/local-marketing/`.
-   Claude Code picks it up automatically; no further config needed.
-2. **Generic** — installs to `~/.agent-skills/local-marketing/` for any
-   other CLI agent (Codex CLI, Gemini CLI, etc.) that can read markdown,
-   run bash/node, and shell out to its own LLM. Point that agent at the
-   installed `SKILL.md` as its instructions entrypoint. This is the same
+1. **Claude Code** — installs the skill to `~/.claude/skills/local-marketing/`
+   and adds explicit slash commands to `~/.claude/commands/local-marketing/`
+   (`/local-marketing:init`, `/local-marketing:review`, etc.).
+2. **Codex CLI** — installs the skill to the shared `~/.agents/skills/`
+   location (see below) and adds custom prompts to `~/.codex/prompts/`
+   (`/local-marketing-init`, `/local-marketing-review`, etc.).
+3. **Other** (Gemini CLI, Cursor, GitHub Copilot, and any other tool that
+   supports the open [Agent Skills standard](https://agentskills.io)) —
+   installs to the shared `~/.agents/skills/local-marketing/` location,
+   which 30+ tools read from automatically. This is the same
    fully-functional skill as the Claude Code install — nothing is held
    back from non-Claude targets.
+
+Either way, the skill **activates automatically** when you make a relevant
+request ("set up marketing for this project") — the explicit slash
+commands (Claude Code, Codex CLI) are a faster, more discoverable shortcut
+to the same thing, not a requirement.
 
 To update later, re-run:
 
@@ -85,9 +94,9 @@ npx @navig-me/local-marketing@latest install
 ### 2. Run the init interview
 
 From inside (or referring to) the project you want to market, ask your
-agent to run the `local-marketing` skill — in Claude Code it activates
-automatically on relevant requests ("set up marketing for this project",
-"/local-marketing init"), or invoke it directly. The agent will:
+agent to run the `local-marketing` skill, or use `/local-marketing:init`
+(Claude Code) / `/local-marketing-init` (Codex CLI) directly. The agent
+will:
 
 - interview you about your product, ICP, target segments, and priority
   geography (one question at a time, with a recommended default you can
