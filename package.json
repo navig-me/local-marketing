@@ -14,6 +14,7 @@
     "node": ">=18"
   },
   "scripts": {
+    "test": "node --test",
     "postinstall": "node ./bin/local-marketing.js --postinstall-noop || true"
   },
   "keywords": [

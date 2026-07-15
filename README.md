@@ -65,7 +65,8 @@ prospect list, a CRM, or sending credentials to another SaaS company.
 npx @navig-me/local-marketing install
 ```
 
-This prompts you to choose an agent target:
+This prompts you to choose one or more agent targets. Enter comma-separated
+numbers when you use more than one, such as `1,2` for Claude Code and Codex CLI:
 
 1. **Claude Code** — installs the skill to `~/.claude/skills/local-marketing/`
    and adds explicit slash commands to `~/.claude/commands/local-marketing/`
