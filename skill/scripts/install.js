@@ -3,6 +3,7 @@ import { stdin, stdout } from "node:process";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import { banner, heading, spinner, success, info, summaryBox, chalk } from "./ui.js";
 
 const AGENT_TARGETS = {
   claude_code: {
@@ -16,12 +17,13 @@ const AGENT_TARGETS = {
 };
 
 export async function installFlow({ pkgRoot, skillRoot }) {
-  const rl = readline.createInterface({ input: stdin, output: stdout });
-  console.log("local-marketing installer\n");
-  console.log("Which agent should this be installed for?");
+  banner();
+  heading("Which AI agent are you using?");
   const keys = Object.keys(AGENT_TARGETS);
-  keys.forEach((k, i) => console.log(`  ${i + 1}. ${AGENT_TARGETS[k].label}`));
-  const answer = (await rl.question(`Choose 1-${keys.length} [1]: `)).trim();
+  keys.forEach((k, i) => console.log(chalk.dim(`  ${i + 1}. `) + AGENT_TARGETS[k].label));
+
+  const rl = readline.createInterface({ input: stdin, output: stdout });
+  const answer = (await rl.question(chalk.bold(`\nChoose 1-${keys.length} `) + chalk.dim(`[1]: `))).trim();
   rl.close();
 
   const idx = answer === "" ? 0 : parseInt(answer, 10) - 1;
@@ -29,18 +31,27 @@ export async function installFlow({ pkgRoot, skillRoot }) {
   const target = AGENT_TARGETS[key];
   const dest = target.installDir();
 
+  const s = spinner("Copying the skill onto your machine...").start();
   fs.mkdirSync(dest, { recursive: true });
   copyDir(skillRoot, dest);
+  s.succeed("Installed.");
 
-  console.log(`\nInstalled local-marketing (agent-agnostic core, fully functional for any target) to:`);
-  console.log(`  ${dest}`);
-  if (key === "claude_code") {
-    console.log("\nClaude Code will pick this up automatically as a skill named 'local-marketing'.");
-  } else {
-    console.log("\nPoint your agent at this folder's SKILL.md as its instructions entrypoint.");
-  }
-  console.log("\nNext: run `npx @navig-me/local-marketing init` inside the project you want to market.");
-  console.log("To update later, re-run `npx @navig-me/local-marketing@latest install`.");
+  const nextSteps =
+    key === "claude_code"
+      ? ["Claude Code will pick this up automatically — nothing else to configure."]
+      : ["Point your agent at this folder's SKILL.md as its instructions entrypoint."];
+
+  summaryBox(chalk.bold("Ready to go 🎉"), [
+    `Installed to: ${dest}`,
+    "",
+    ...nextSteps,
+    "",
+    chalk.bold("Next: set up your project"),
+    chalk.cyan(`  npx @navig-me/local-marketing init`),
+    "",
+    chalk.dim("To update later:"),
+    chalk.cyan(`  npx @navig-me/local-marketing@latest install`),
+  ]);
 }
 
 function copyDir(src, dest) {

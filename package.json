@@ -1,7 +1,7 @@
 {
   "name": "@navig-me/local-marketing",
-  "version": "0.2.0",
-  "description": "Local-only, agent-agnostic marketing skill: init interview, ICP/company research, SQLite-backed prospect CRM, file-approved outbound sequences over SMTP.",
+  "version": "0.3.0",
+  "description": "Turn Claude Code (or any headless CLI agent) into a local, human-approved customer-acquisition system: ICP interview, market research, SQLite prospect CRM, drafted outreach sequences you approve before anything sends over SMTP. No hosted CRM, no cloud database, no subscription.",
   "type": "module",
   "bin": {
     "local-marketing": "./bin/local-marketing.js"
@@ -18,11 +18,25 @@
   },
   "keywords": [
     "claude-code",
+    "claude-code-skill",
     "skill",
+    "ai-agent",
+    "llm-agent",
     "marketing",
+    "growth",
+    "outbound",
+    "cold-email",
+    "sales-crm",
+    "crm",
     "sqlite",
     "smtp",
-    "cold-email",
+    "cron",
+    "local-first",
+    "privacy",
+    "founder-tools",
+    "indie-hacker",
+    "b2b",
+    "lead-generation",
     "agent"
   ],
   "license": "MIT",

@@ -29,3 +29,14 @@ marketing/outreach skill. See `README.md` for the product description and
   ever come from files physically present in `approved/`.
 - SMTP credentials are always env vars (`LOCAL_MARKETING_SMTP_PASSWORD`,
   `LOCAL_MARKETING_SMTP_API_KEY`), never written into `config.yaml`.
+- Target audience includes non-technical users. Every command output goes
+  through `skill/scripts/ui.js` (chalk/ora/boxen wrappers — `heading`,
+  `info`, `success`, `warn`, `spinner`, `summaryBox`) and every user-facing
+  error should be thrown as a `FriendlyError` (`skill/scripts/util.js`) with
+  a plain-language message plus a concrete `nextStep` — never let a raw
+  stack trace or a message like "ENOENT" or "path" reach the user.
+- `skill/scripts/registry.js` tracks known projects at
+  `~/.local-marketing/projects.json` so commands work with no path argument
+  once `init` has run once. `resolveDataDir` (`util.js`) is the single place
+  that falls back through: explicit arg → cwd's config.yaml → registry
+  default. Keep new commands going through it rather than requiring a path.

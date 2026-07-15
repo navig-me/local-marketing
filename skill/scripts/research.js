@@ -5,6 +5,7 @@ import yaml from "js-yaml";
 import { openDb } from "./db.js";
 import { resolveDataDir, loadConfig } from "./util.js";
 import { callLlm, extractJson } from "./llm.js";
+import { info, success, warn, spinner, summaryBox, kv, chalk } from "./ui.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -18,7 +19,7 @@ export async function research({ dataDir, segmentId }) {
 
   const segment = pickSegment(db, dir, segmentId);
   if (!segment) {
-    console.log("No active segment found. Activate one in the segments table / segments/ folder first.");
+    warn("No active market segment yet — set one up during setup, or ask your agent to activate one.");
     return;
   }
 
@@ -30,7 +31,7 @@ export async function research({ dataDir, segmentId }) {
     .all(segment.id, cap);
 
   if (candidates.length === 0) {
-    console.log(`No candidate prospects queued for segment "${segment.id}".`);
+    info(`No new candidates waiting for "${segment.name || segment.id}" — add some first (curated by you, never auto-discovered).`);
     return;
   }
 
@@ -41,14 +42,15 @@ export async function research({ dataDir, segmentId }) {
   }
 
   if (toScore.length === 0) {
-    console.log(`All ${candidates.length} queued candidates were already suppressed.`);
+    info(`All ${candidates.length} candidate(s) had already opted out or bounced before — nothing new to score.`);
     return;
   }
 
   const prompt = buildPrompt(playbook, segment, toScore);
-  console.log(`Scoring ${toScore.length} candidate(s) for segment "${segment.id}" via ${config.llm?.command || "claude"}...`);
+  const s = spinner(`Looking into ${toScore.length} business${toScore.length === 1 ? "" : "es"} for "${segment.name || segment.id}"...`).start();
   const raw = await callLlm(config, prompt);
   const results = extractJson(raw);
+  s.succeed(`Done researching.`);
 
   if (!Array.isArray(results)) {
     throw new Error("Expected the LLM to return a JSON array of scoring results.");
@@ -79,7 +81,11 @@ export async function research({ dataDir, segmentId }) {
     }
   }
 
-  console.log(`Research done for "${segment.id}": ${qualified} qualified, ${disqualified} disqualified, ${skipped} left unscored.`);
+  summaryBox(chalk.bold(`Results for "${segment.name || segment.id}"`), [
+    kv("Qualified (ready to draft)", qualified),
+    kv("Disqualified", disqualified),
+    kv("Left unscored (not enough info)", skipped),
+  ]);
 }
 
 function pickSegment(db, dir, segmentId) {

@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { spinner, success, info, chalk } from "./ui.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -10,6 +11,7 @@ export async function checkUpdate({ pkgRoot }) {
   const pkgJsonPath = path.join(pkgRoot, "package.json");
   const { name, version } = JSON.parse(fs.readFileSync(pkgJsonPath, "utf8"));
 
+  const s = spinner("Checking for updates...").start();
   let latest;
   try {
     const res = await fetch(`https://registry.npmjs.org/${encodeURIComponent(name).replace("%40", "@")}/latest`);
@@ -17,16 +19,16 @@ export async function checkUpdate({ pkgRoot }) {
     const data = await res.json();
     latest = data.version;
   } catch (err) {
-    console.error(`Could not check for updates: ${err.message}`);
+    s.fail(`Couldn't check for updates: ${err.message}`);
     process.exitCode = 1;
     return;
   }
 
   if (latest === version) {
-    console.log(`local-marketing is up to date (v${version}).`);
+    s.succeed(`You're on the latest version (v${version}).`);
     return;
   }
 
-  console.log(`A newer version is available: v${version} -> v${latest}`);
-  console.log(`Update with: npx ${name}@latest install`);
+  s.warn(`A newer version is out: v${version} → v${latest}`);
+  info(chalk.cyan(`Update with: npx ${name}@latest install`));
 }

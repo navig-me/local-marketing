@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { openDb } from "./db.js";
 import { resolveDataDir, loadConfig, requireEnv } from "./util.js";
 import { callLlm, extractJson } from "./llm.js";
+import { info, spinner, summaryBox, kv, chalk } from "./ui.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -16,13 +17,13 @@ export async function triage({ dataDir }) {
   const playbook = fs.readFileSync(path.join(__dirname, "..", "playbooks", "triage.md"), "utf8");
 
   if (!config.smtp?.api_base_url) {
-    console.log("No smtp.api_base_url configured — nothing to poll. Set it up per docs/SMTP_SETUP.md.");
+    info("Email tracking isn't set up yet — see skill/docs/SMTP_SETUP.md to add it.");
     return;
   }
 
   const events = await fetchProviderEvents(config);
   if (events.length === 0) {
-    console.log("No new events since last run.");
+    info("No new replies, bounces, or complaints since the last check.");
     return;
   }
 
@@ -35,9 +36,10 @@ export async function triage({ dataDir }) {
   const byEmail = new Map(openProspects.map((p) => [p.email?.toLowerCase(), p]));
 
   const prompt = buildPrompt(playbook, events);
-  console.log(`Classifying ${events.length} event(s) via ${config.llm?.command || "claude"}...`);
+  const s = spinner(`Reading ${events.length} new reply/bounce event${events.length === 1 ? "" : "s"}...`).start();
   const raw = await callLlm(config, prompt);
   const classified = extractJson(raw);
+  s.succeed(`Done.`);
 
   if (!Array.isArray(classified)) {
     throw new Error("Expected the LLM to return a JSON array of classified events.");
@@ -84,9 +86,15 @@ export async function triage({ dataDir }) {
     }
   }
 
-  console.log(
-    `Triage done: ${bounces} bounce(s), ${complaints} complaint(s), ${unsubs} unsubscribe(s), ${tasks} task(s) written to ${tasksDir}.`
-  );
+  summaryBox(chalk.bold("Triage results"), [
+    kv("Bounces", bounces),
+    kv("Complaints", complaints),
+    kv("Unsubscribes", unsubs),
+    kv("Replies needing you", tasks),
+  ]);
+  if (tasks > 0) {
+    info(`See the ${tasks === 1 ? "file" : "files"} in ${tasksDir} — these need a human reply, nothing was sent automatically.`);
+  }
 }
 
 function stopSequences(db, prospectId, reason) {

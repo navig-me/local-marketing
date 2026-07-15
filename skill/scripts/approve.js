@@ -1,23 +1,26 @@
 import fs from "node:fs";
 import path from "node:path";
+import { info, success, warn, chalk } from "./ui.js";
+import { FriendlyError } from "./util.js";
 
 export async function approve({ file }) {
   const abs = path.resolve(file);
   if (!fs.existsSync(abs)) {
-    console.error(`No such file: ${abs}`);
-    process.exitCode = 1;
-    return;
+    throw new FriendlyError(`I can't find that draft.`, `Double-check the file path — run "review" to see the exact path for each pending draft.`);
   }
   const pendingMarker = `${path.sep}pending_review${path.sep}`;
   if (!abs.includes(pendingMarker)) {
-    console.error(`Refusing to approve a file outside pending_review/: ${abs}`);
-    process.exitCode = 1;
-    return;
+    throw new FriendlyError(
+      `That file isn't in a pending_review/ folder, so I won't touch it.`,
+      `Only drafts sitting in pending_review/ can be approved this way — this is a safety check so nothing outside the review flow gets sent by accident.`
+    );
   }
   const dest = abs.replace(pendingMarker, `${path.sep}approved${path.sep}`);
   fs.mkdirSync(path.dirname(dest), { recursive: true });
 
-  console.log(`Moving:\n  ${abs}\n  -> ${dest}`);
+  info(`Moving this draft out of review and into the send queue:`);
+  info(chalk.dim(`  from: ${abs}`));
+  info(chalk.dim(`  to:   ${dest}`));
   fs.renameSync(abs, dest);
-  console.log(`Approved. The send agent only reads from approved/, so this is now eligible to send on its scheduled day.`);
+  success(`Approved — this will go out on its scheduled day.`);
 }

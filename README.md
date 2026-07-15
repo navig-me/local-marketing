@@ -1,11 +1,27 @@
 # local-marketing
 
-A local-only, agent-agnostic marketing/customer-acquisition skill. Works with
-Claude Code and any other headless CLI agent (Codex CLI, Gemini CLI, etc.)
-that can read markdown, run bash/node, and call its own LLM. No hosted CRM,
-no hosted workflow engine, no cloud database — everything lives in one data
-directory on your machine: a SQLite file, a YAML config, and two folders
-(`pending_review/`, `approved/`) that gate every outbound send behind a human.
+**Your AI coding agent already writes your code. Now it can find your first
+customers too — entirely on your own machine, nothing sent anywhere without
+your sign-off.**
+
+[![npm version](https://img.shields.io/npm/v/@navig-me/local-marketing.svg)](https://www.npmjs.com/package/@navig-me/local-marketing)
+[![license](https://img.shields.io/npm/l/@navig-me/local-marketing.svg)](LICENSE)
+
+`local-marketing` turns Claude Code (or any headless CLI agent — Codex CLI,
+Gemini CLI, etc.) into a customer-acquisition system for solo founders and
+small teams: it interviews you about your product and ICP, researches your
+market, scores and drafts outreach to prospects you curate, and sends it —
+but only after you've approved every single message.
+
+There's no hosted CRM, no workflow platform, no cloud database, and no
+subscription. Everything lives in one folder on your machine: a SQLite file,
+a plain-text config, and two folders (`pending_review/`, `approved/`) that
+are the entire "approval workflow" — move a file, and that's your sign-off.
+Your only external dependency is an SMTP provider, used purely as a dumb
+send/poll pipe.
+
+Built for people who want the leverage of an "AI SDR" without handing a
+prospect list, a CRM, or sending credentials to another SaaS company.
 
 ## What it does
 

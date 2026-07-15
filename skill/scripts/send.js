@@ -3,6 +3,7 @@ import path from "node:path";
 import nodemailer from "nodemailer";
 import { openDb } from "./db.js";
 import { resolveDataDir, loadConfig, requireEnv } from "./util.js";
+import { heading, info as logInfo, success, warn, spinner, chalk } from "./ui.js";
 
 export async function send({ dataDir }) {
   const dir = resolveDataDir(dataDir);
@@ -14,17 +15,14 @@ export async function send({ dataDir }) {
     db.prepare(
       `INSERT INTO circuit_breaker_events (reason, metric_value, threshold) VALUES (?, ?, ?)`
     ).run(breaker.reason, breaker.value, breaker.threshold);
-    console.error(
-      `CIRCUIT BREAKER TRIPPED: ${breaker.reason} = ${(breaker.value * 100).toFixed(2)}% ` +
-        `exceeds threshold ${(breaker.threshold * 100).toFixed(2)}%. Sending nothing. ` +
-        `A human must investigate and clear this before sends resume.`
-    );
+    warn(chalk.bold(`Sending is paused — ${breaker.reason.replace("_", " ")} is ${(breaker.value * 100).toFixed(2)}%, above the ${(breaker.threshold * 100).toFixed(2)}% safety limit.`));
+    logInfo(`Nothing was sent. Have a person check what's going on before trying again.`);
     return;
   }
 
   const approvedDir = path.join(dir, "approved");
   if (!fs.existsSync(approvedDir)) {
-    console.log("No approved/ folder — nothing to send.");
+    logInfo("Nothing to send yet.");
     return;
   }
 
@@ -38,9 +36,11 @@ export async function send({ dataDir }) {
     .all(today);
 
   if (due.length === 0) {
-    console.log("No sends due today.");
+    logInfo("Nothing due to send today.");
     return;
   }
+
+  heading(`Sending ${due.length} approved email${due.length === 1 ? "" : "s"}`);
 
   const password = requireEnv(config.smtp.password_env_var);
   const transporter = nodemailer.createTransport({
@@ -53,22 +53,29 @@ export async function send({ dataDir }) {
     db.prepare(`SELECT email FROM suppression`).all().map((r) => r.email)
   );
 
+  let sent = 0,
+    skipped = 0,
+    failed = 0;
+
   for (const row of due) {
     if (suppressed.has(row.email)) {
-      console.log(`Skipping ${row.email} (suppressed).`);
+      warn(`Skipping ${row.email} — they've opted out or bounced before.`);
       db.prepare(`UPDATE sequence_state SET status='stopped', stopped_reason='suppression' WHERE id=?`).run(row.id);
+      skipped++;
       continue;
     }
     if (!row.draft_path || !fs.existsSync(row.draft_path)) {
-      console.log(`Skipping prospect ${row.prospect_id}: no approved draft file found.`);
+      warn(`Skipping ${row.business_name} — no approved draft found for this step.`);
+      skipped++;
       continue;
     }
     const body = fs.readFileSync(row.draft_path, "utf8");
     const subjectMatch = body.match(/^Subject:\s*(.+)$/m);
     const subject = subjectMatch ? subjectMatch[1] : `Re: ${row.business_name}`;
 
+    const s = spinner(`Sending to ${row.email}...`).start();
     try {
-      const info = await transporter.sendMail({
+      const result = await transporter.sendMail({
         from: `${config.smtp.from_name} <${config.smtp.from_address}>`,
         to: row.email,
         subject,
@@ -76,13 +83,18 @@ export async function send({ dataDir }) {
       });
       db.prepare(
         `INSERT INTO send_log (prospect_id, sequence_step, status, provider_message_id) VALUES (?, ?, 'sent', ?)`
-      ).run(row.prospect_id, row.step, info.messageId);
+      ).run(row.prospect_id, row.step, result.messageId);
       db.prepare(`UPDATE sequence_state SET status='sent' WHERE id=?`).run(row.id);
-      console.log(`Sent step ${row.step} to ${row.email}`);
+      s.succeed(`Sent to ${row.email}`);
+      sent++;
     } catch (err) {
-      console.error(`Failed to send to ${row.email}: ${err.message}`);
+      s.fail(`Couldn't send to ${row.email}: ${err.message}`);
+      failed++;
     }
   }
+
+  console.log();
+  success(`${sent} sent` + (skipped ? `, ${skipped} skipped` : "") + (failed ? `, ${chalk.red(failed + " failed")}` : ""));
 }
 
 function checkCircuitBreaker(db, config) {

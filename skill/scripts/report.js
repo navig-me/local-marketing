@@ -3,6 +3,7 @@ import path from "node:path";
 import nodemailer from "nodemailer";
 import { openDb } from "./db.js";
 import { resolveDataDir, loadConfig, requireEnv } from "./util.js";
+import { heading, info, success, summaryBox, kv, spinner, chalk } from "./ui.js";
 
 export async function report({ dataDir }) {
   const dir = resolveDataDir(dataDir);
@@ -35,11 +36,28 @@ export async function report({ dataDir }) {
 ${funnel.breakerTrips > 0 ? "**Circuit breaker tripped this week — check circuit_breaker_events before resuming sends.**" : "No circuit breaker trips this week."}
 `;
 
+  heading(`This week's report — ${dateStr}`);
+
   const reportsDir = path.join(dir, "reports");
   fs.mkdirSync(reportsDir, { recursive: true });
   const reportPath = path.join(reportsDir, `${dateStr}.md`);
   fs.writeFileSync(reportPath, md);
-  console.log(`Report written to ${reportPath}`);
+
+  summaryBox(chalk.bold("Funnel — last 7 days"), [
+    kv("New candidates", funnel.candidates),
+    kv("Qualified", funnel.qualified),
+    kv("Disqualified", funnel.disqualified),
+    kv("Emails sent", funnel.sent),
+    kv("Bounces", funnel.bounced),
+    kv("Replies", funnel.replies),
+    kv("Circuit breaker trips", funnel.breakerTrips),
+  ]);
+
+  if (funnel.breakerTrips > 0) {
+    console.log(chalk.yellow.bold("  ! Sending was paused at least once this week — check circuit_breaker_events."));
+  }
+
+  info(`Saved to ${reportPath}`);
 
   if (config.reporting?.admin_email) {
     const password = requireEnv(config.smtp.password_env_var);
@@ -48,13 +66,14 @@ ${funnel.breakerTrips > 0 ? "**Circuit breaker tripped this week — check circu
       port: config.smtp.port,
       auth: { user: config.smtp.username, pass: password },
     });
+    const s = spinner(`Emailing this to ${config.reporting.admin_email}...`).start();
     await transporter.sendMail({
       from: `${config.smtp.from_name} <${config.smtp.from_address}>`,
       to: config.reporting.admin_email,
       subject: `local-marketing weekly report — ${dateStr}`,
       text: md,
     });
-    console.log(`Emailed report to ${config.reporting.admin_email}`);
+    s.succeed(`Emailed to ${config.reporting.admin_email}`);
   }
 }
 

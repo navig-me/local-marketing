@@ -5,6 +5,7 @@ import yaml from "js-yaml";
 import { openDb } from "./db.js";
 import { resolveDataDir, loadConfig } from "./util.js";
 import { callLlm, extractJson } from "./llm.js";
+import { info, success, warn, spinner, chalk } from "./ui.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -28,7 +29,7 @@ export async function draft({ dataDir, segmentId }) {
     .all(...params);
 
   if (qualified.length === 0) {
-    console.log("No newly-qualified prospects with a relevance note to draft for.");
+    info("Nothing new to draft — run \"research\" first to qualify some prospects.");
     return;
   }
 
@@ -48,14 +49,15 @@ export async function draft({ dataDir, segmentId }) {
     }
 
     const prompt = buildPrompt(playbook, prospect, brief, cadenceDays);
-    console.log(`Drafting sequence for "${prospect.business_name}"...`);
+    const s = spinner(`Writing outreach for "${prospect.business_name}"...`).start();
     const raw = await callLlm(config, prompt);
     const emails = extractJson(raw);
 
     if (!Array.isArray(emails) || emails.length !== cadenceDays.length) {
-      console.error(`  Skipping: expected ${cadenceDays.length} emails, got ${Array.isArray(emails) ? emails.length : "non-array"}.`);
+      s.fail(`Skipped "${prospect.business_name}" — got an unexpected response, try again.`);
       continue;
     }
+    s.succeed(`Wrote ${emails.length} emails for "${prospect.business_name}"`);
 
     const slug = slugify(prospect.business_name);
     const dateStr = new Date().toISOString().slice(0, 10);
@@ -79,8 +81,9 @@ export async function draft({ dataDir, segmentId }) {
     written += emails.length;
   }
 
-  console.log(`\nWrote ${written} draft(s) into ${pendingDir}.`);
-  console.log(`Nothing sends until you run "review" and "approve" each one (or move files to approved/ yourself).`);
+  console.log();
+  success(`${written} email${written === 1 ? "" : "s"} written and waiting for your review.`);
+  info(`Nothing gets sent until you run "review" and approve each one.`);
 }
 
 function buildPrompt(playbook, prospect, brief, cadenceDays) {
