@@ -38,6 +38,8 @@ just a discoverable shortcut, not a different code path.
 | `send` | Check the circuit breaker, send everything due today from `approved/`, log to `send_log` |
 | `triage` | Poll the SMTP provider's API for replies/bounces, classify, update `suppression`/`sequence_state` |
 | `report` | Roll up the week's funnel, write a Markdown report, email it to `reporting.admin_email` |
+| `cron-install` | Turn on (or update) the automatic schedule for a project |
+| `cron-uninstall` | Turn off the automatic schedule for a project |
 
 ## Init interview (run first, once)
 
@@ -104,6 +106,33 @@ with their answers, and initialize the SQLite DB from `db/schema.sql`. This
 skill does not bundle a search API — all research uses your own web
 search/fetch tools.
 
+### After scaffolding: don't stop at "you're set up"
+
+The goal is a working pipeline, not just a folder. Immediately after
+`init.js` finishes, keep going in the same conversation — don't make the
+user come back later and separately ask for each of these:
+
+- **Cron**: if `init.js`'s own prompt didn't already turn it on (e.g. this
+  was a non-interactive/scripted run), ask directly: "want the automatic
+  schedule turned on now?" If yes, run `cron-install` for them right there.
+- **Candidate prospects**: ask if they'd like to add a few candidate
+  businesses now so `research`/`draft` have something to work with. If yes,
+  help them interactively — use your own web search to *suggest* candidates
+  matching the active segment's `signals`, but the user approves each one
+  before you insert it (this is still human-curated, just agent-assisted;
+  see "Candidate sourcing stays human-curated" below — you are never adding
+  prospects unprompted or from an unattended run).
+- **SMTP secret**: remind them once, plainly, which two env vars still need
+  setting and that nothing can send without them — then don't nag about it
+  again every turn.
+
+Keep this as automated and non-technical as possible: prefer doing the next
+step for them (with confirmation) over just telling them the command to run
+themselves. If Claude Code slash commands or Codex CLI custom prompts are
+installed, mention those (`/local-marketing:cron-install`, etc.) rather than
+raw `npx ...` invocations — they're the more discoverable, less technical
+path for a user who isn't comfortable with a terminal.
+
 ## Candidate sourcing stays human-curated
 
 The `research` command never searches the open web for new prospects
@@ -120,15 +149,26 @@ it even if your web tools could technically do open-ended discovery.
 
 `draft` writes each outreach email as a plain markdown file into
 `pending_review/`, e.g. `pending_review/2026-07-15_acme-tuition_day1.md`.
-Nothing sends from this folder. The user reviews/edits the file directly in
-their editor. To approve, either:
-- run `local-marketing approve pending_review/<file>` (prints exactly what
-  it's about to do before moving the file), or
-- move the file to `approved/` themselves.
+Nothing sends from this folder.
 
-`send` only ever reads from `approved/`. Always tell the user which of these
-two paths you just used, and where the file ended up, so the mechanism is
-never a black box.
+The user doesn't need to know any of that mechanism to use it — they can
+just ask you conversationally, and you translate that into the right
+action:
+- **"show me the drafts" / "preview"** — run `review` (or
+  `/local-marketing:review`) and show the content inline in the chat, not
+  just a file path.
+- **"approve this one" / "send it"** — run `approve <file>` (or
+  `/local-marketing:approve`). Always say which file moved and where it
+  ended up, so the mechanism is never a black box.
+- **"reject this one" / "skip it"** — delete the file from `pending_review/`
+  yourself (with the user's confirmation) rather than telling them to go
+  delete it manually.
+- **"edit this one" — change the subject/body to X** — edit the file
+  in-place in `pending_review/` directly (it's just a markdown file), then
+  offer to show the updated version before they approve it.
+
+`send` only ever reads from `approved/`, so nothing above can accidentally
+trigger a real send — approving still just moves a file.
 
 ## Circuit breaker
 

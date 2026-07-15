@@ -1,12 +1,38 @@
 import { execFileSync } from "node:child_process";
 import readline from "node:readline/promises";
 import { stdin, stdout } from "node:process";
+import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chalk, success, info } from "./ui.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const binPath = path.resolve(__dirname, "..", "..", "bin", "local-marketing.js");
+
+// Cron entries must never point at a file path that can disappear between
+// runs. A path resolved via __dirname is fine for a global `npm install -g`,
+// but when this command was itself invoked through `npx` (no persistent
+// install), __dirname resolves inside npm's ephemeral npx cache
+// (~/.npm/_npx/<hash>/...), which npm can prune at any time — that would
+// silently break every scheduled job with no warning. Detect that case and
+// use a pinned `npx @navig-me/local-marketing@<version>` invocation instead,
+// which re-fetches on demand rather than depending on a specific file
+// surviving. The version is pinned to what's current right now (not
+// @latest) so cron doesn't silently auto-update between runs — matches the
+// project's "explicit updates only" design.
+function resolveCronCommandPrefix() {
+  const localBin = path.resolve(__dirname, "..", "..", "bin", "local-marketing.js");
+  const isEphemeralNpx = __dirname.includes(`${path.sep}_npx${path.sep}`);
+
+  if (!isEphemeralNpx && fs.existsSync(localBin)) {
+    return `node "${localBin}"`;
+  }
+
+  const pkgJsonPath = path.resolve(__dirname, "..", "..", "package.json");
+  const { name, version } = JSON.parse(fs.readFileSync(pkgJsonPath, "utf8"));
+  return `npx --yes ${name}@${version}`;
+}
+
+const cronCommandPrefix = resolveCronCommandPrefix();
 
 // Marker comments so re-running init for the same project replaces its
 // block instead of duplicating entries, and never touches other projects'
@@ -23,7 +49,7 @@ export async function installCron({ dataDir, slug, interactive }) {
   if (!interactive) {
     console.log();
     info(`Not installed automatically this time. Install it later with:`);
-    info(chalk.cyan(`  node "${binPath}" cron-install "${dataDir}"`));
+    info(chalk.cyan(`  npx @navig-me/local-marketing cron-install "${dataDir}"`));
     return;
   }
 
@@ -39,8 +65,32 @@ export async function installCron({ dataDir, slug, interactive }) {
   success(`Automatic schedule is on. (Advanced: \`crontab -l\` to view it, \`crontab -e\` to edit it.)`);
 }
 
+export async function uninstallCron({ slug }) {
+  let existing = "";
+  try {
+    existing = execFileSync("crontab", ["-l"], { encoding: "utf8" });
+  } catch {
+    info("No automatic schedule is running for this project (no crontab at all).");
+    return;
+  }
+
+  const lines = existing.split("\n");
+  const startIdx = lines.indexOf(START_MARKER(slug));
+  const endIdx = lines.indexOf(END_MARKER(slug));
+
+  if (startIdx === -1 || endIdx === -1 || endIdx <= startIdx) {
+    info(`No automatic schedule is currently on for "${slug}".`);
+    return;
+  }
+
+  const newLines = [...lines.slice(0, startIdx), ...lines.slice(endIdx + 1)];
+  const newCrontab = newLines.join("\n").replace(/\n{3,}/g, "\n\n").trim() + "\n";
+  execFileSync("crontab", ["-"], { input: newCrontab });
+  success(`Automatic schedule turned off for "${slug}". Nothing runs on its own until you turn it back on.`);
+}
+
 function buildCronBlock({ dataDir, slug }) {
-  const cmd = (sub) => `node "${binPath}" ${sub} "${dataDir}"`;
+  const cmd = (sub) => `${cronCommandPrefix} ${sub} "${dataDir}"`;
   return [
     START_MARKER(slug),
     `0 8 * * MON ${cmd("research")}`,

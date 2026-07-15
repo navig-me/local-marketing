@@ -98,6 +98,18 @@ program
   });
 
 program
+  .command("cron-uninstall")
+  .description("Turn off the automatic schedule for a project")
+  .argument("[dataDir]", "which project to use (optional — uses your only/default project automatically)")
+  .action(async (dataDir) => {
+    const { resolveDataDir, loadConfig } = await import("../skill/scripts/util.js");
+    const { uninstallCron } = await import("../skill/scripts/cron.js");
+    const dir = resolveDataDir(dataDir);
+    const config = loadConfig(dir);
+    await uninstallCron({ slug: config.project?.slug || "default" });
+  });
+
+program
   .command("send")
   .description("Check the circuit breaker and send everything due today from approved/")
   .argument("[dataDir]", "which project to use (optional — uses your only/default project automatically)")
