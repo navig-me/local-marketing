@@ -15,6 +15,14 @@ program
   .version(JSON.parse(fs.readFileSync(path.join(pkgRoot, "package.json"))).version);
 
 program
+  .command("check-update")
+  .description("Check npm for a newer version (does not install anything)")
+  .action(async () => {
+    const { checkUpdate } = await import("../skill/scripts/check-update.js");
+    await checkUpdate({ pkgRoot });
+  });
+
+program
   .command("install")
   .description("Install this skill into an agent's skill directory (asks which agent)")
   .action(async () => {
