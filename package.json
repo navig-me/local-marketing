@@ -1,0 +1,44 @@
+{
+  "name": "local-marketing",
+  "version": "0.1.0",
+  "description": "Local-only, agent-agnostic marketing skill: init interview, ICP/company research, SQLite-backed prospect CRM, file-approved outbound sequences over SMTP.",
+  "type": "module",
+  "bin": {
+    "local-marketing": "./bin/local-marketing.js"
+  },
+  "files": [
+    "bin",
+    "skill"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "postinstall": "node ./bin/local-marketing.js --postinstall-noop || true"
+  },
+  "keywords": [
+    "claude-code",
+    "skill",
+    "marketing",
+    "sqlite",
+    "smtp",
+    "cold-email",
+    "agent"
+  ],
+  "license": "MIT",
+  "author": "Mihir Khandekar",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/navig-me/local-marketing.git"
+  },
+  "homepage": "https://github.com/navig-me/local-marketing#readme",
+  "bugs": {
+    "url": "https://github.com/navig-me/local-marketing/issues"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.3.0",
+    "commander": "^12.1.0",
+    "js-yaml": "^4.1.0",
+    "nodemailer": "^6.9.14"
+  }
+}

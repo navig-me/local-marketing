@@ -1,0 +1,12 @@
+# Template for segments/<id>.yaml — one file per active market segment.
+# Copied and filled in during the init interview / when adding a new segment.
+
+id: ""                    # matches segments.id in the DB, e.g. "tuition_centres_1_3_locations"
+name: ""
+geography: ""
+signals:
+  - ""                     # public, verifiable signs this business fits the segment
+disqualifiers:
+  - ""                     # reasons to skip, checked before signals
+offer: ""                  # the low-commitment first offer for this segment
+weekly_new_prospect_cap: 25
