@@ -33,9 +33,10 @@ program
 program
   .command("init")
   .description("Run the init interview and scaffold a local data directory")
-  .action(async () => {
+  .option("--answers <file>", "JSON answers collected by an agent-led init interview")
+  .action(async (opts) => {
     const { init } = await import("../skill/scripts/init.js");
-    await init({ skillRoot });
+    await init({ skillRoot, answersPath: opts.answers });
   });
 
 program

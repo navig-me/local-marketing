@@ -8,11 +8,13 @@ import { installCron } from "./cron.js";
 import { banner, heading, spinner, success, info, summaryBox, kv, chalk } from "./ui.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const COPY_INSTRUCTIONS_FILE = "copy-instructions.md";
+const MARKETING_PLAN_FILE = "MARKETING_PLAN.md";
 
 // This does NOT run the conversational interview — that's the calling agent's
 // job (see SKILL.md "Init interview"). This scaffolds the data directory once
-// the agent has collected answers into a config object and passes it in via
-// a JSON file at process.argv[2], or falls back to writing an empty template
+// the agent has collected answers into a config object and passes it via the
+// CLI's --answers JSON file option, or falls back to writing empty templates
 // the agent can then fill in and re-run.
 export async function init({ skillRoot, answersPath }) {
   banner();
@@ -21,9 +23,12 @@ export async function init({ skillRoot, answersPath }) {
   const exampleConfig = yaml.load(fs.readFileSync(exampleConfigPath, "utf8"));
 
   let config = exampleConfig;
+  let copyInstructions = "";
+  let marketingPlan = "";
   if (answersPath && fs.existsSync(answersPath)) {
     const answers = JSON.parse(fs.readFileSync(answersPath, "utf8"));
-    config = deepMerge(exampleConfig, answers);
+    ({ copy_instructions: copyInstructions = "", marketing_plan: marketingPlan = "", ...config } = answers);
+    config = deepMerge(exampleConfig, config);
   }
 
   // `init` is also a useful direct CLI command. When no agent interview has
@@ -57,6 +62,8 @@ export async function init({ skillRoot, answersPath }) {
 
   config.project = { ...config.project, slug, data_dir: dataDir };
   fs.writeFileSync(path.join(dataDir, "config.yaml"), yaml.dump(config));
+  writeIfMissing(path.join(dataDir, COPY_INSTRUCTIONS_FILE), copyInstructions || copyInstructionsTemplate());
+  writeIfMissing(path.join(dataDir, MARKETING_PLAN_FILE), marketingPlan || marketingPlanTemplate(config));
 
   const db = openDb(dataDir);
   db.close();
@@ -107,4 +114,50 @@ function deepMerge(base, overrides) {
     }
   }
   return out;
+}
+
+function writeIfMissing(filePath, content) {
+  if (!fs.existsSync(filePath)) fs.writeFileSync(filePath, `${content.trim()}\n`);
+}
+
+function copyInstructionsTemplate() {
+  return `# Copy instructions
+
+This is the durable source of truth for email-specific preferences. Every
+interactive and scheduled draft uses it. Keep requests compatible with the
+non-negotiable safety rules in the local-marketing copy playbook.
+
+## Voice and tone
+
+- Add the agreed voice, vocabulary, and formality preferences here.
+
+## Positioning and proof
+
+- Add approved value propositions, proof points, and claims here.
+- Claims must be verifiable in project materials or approved by the user.
+
+## Do and do not
+
+- Add required phrases, prohibited phrases, CTA preferences, and formatting rules here.`;
+}
+
+function marketingPlanTemplate(config) {
+  const name = config.project?.name || config.project?.slug || "this project";
+  return `# Marketing plan: ${name}
+
+Complete this plan through the agent-led init interview before outreach begins.
+
+## Positioning
+
+## Ideal customer profile
+
+## Prioritized segments
+
+## Offer and call to action
+
+## Outreach approach
+
+## Proof and claim policy
+
+## Metrics and review cadence`;
 }

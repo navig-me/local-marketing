@@ -112,6 +112,9 @@ will:
 
 If you run `npx @navig-me/local-marketing init` directly, it uses your
 current directory as the data directory and makes it your default project.
+The agent-led interview also creates `MARKETING_PLAN.md` and
+`copy-instructions.md`; the latter is applied to every email draft, including
+scheduled drafts.
 
 ### 3. Set up SMTP
 

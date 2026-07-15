@@ -6,6 +6,7 @@ import { spawnSync } from "node:child_process";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import yaml from "js-yaml";
+import { buildPrompt } from "../skill/scripts/draft.js";
 
 const testDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(testDir, "..");
@@ -57,4 +58,45 @@ test("bare init uses the current directory and makes it the default project", (t
   const registry = JSON.parse(fs.readFileSync(path.join(home, ".local-marketing", "projects.json"), "utf8"));
   assert.equal(registry.defaultSlug, path.basename(projectDir));
   assert.equal(registry.projects[path.basename(projectDir)], resolvedProjectDir);
+  assert.ok(fs.existsSync(path.join(projectDir, "copy-instructions.md")));
+  assert.ok(fs.existsSync(path.join(projectDir, "MARKETING_PLAN.md")));
+});
+
+test("agent-led init persists the agreed marketing plan and copy instructions", (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "local-marketing-guided-init-"));
+  const home = path.join(root, "home");
+  const projectDir = path.join(root, "guided-project");
+  const answersPath = path.join(root, "answers.json");
+  fs.mkdirSync(projectDir, { recursive: true });
+  fs.writeFileSync(
+    answersPath,
+    JSON.stringify({
+      project: { name: "Guided Project", slug: "guided-project", data_dir: projectDir },
+      marketing_plan: "# Marketing plan\n\nPrioritize operators with manual workflows.",
+      copy_instructions: "# Copy instructions\n\nUse a friendly, direct tone.",
+    })
+  );
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+
+  const result = runCli(["init", "--answers", answersPath], { cwd: projectDir, home, input: "n\n" });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(fs.readFileSync(path.join(projectDir, "MARKETING_PLAN.md"), "utf8"), /Prioritize operators/);
+  assert.match(fs.readFileSync(path.join(projectDir, "copy-instructions.md"), "utf8"), /friendly, direct/);
+  const config = fs.readFileSync(path.join(projectDir, "config.yaml"), "utf8");
+  assert.doesNotMatch(config, /copy_instructions|marketing_plan/);
+});
+
+test("draft prompts include approved copy instructions without relaxing copy rules", () => {
+  const prompt = buildPrompt(
+    "Never fabricate claims.",
+    { business_name: "Acme", relevance_note: "Uses a manual process." },
+    { offer: "Save time" },
+    [1, 4],
+    "Use a warm, concise tone. Never mention discounts."
+  );
+
+  assert.match(prompt, /Approved project copy instructions/);
+  assert.match(prompt, /Use a warm, concise tone/);
+  assert.match(prompt, /cannot relax safety, truthfulness, personalization, or approval requirements/);
 });
