@@ -15,13 +15,18 @@ a persistent background service.
 
 This skill works identically regardless of which CLI agent is running it.
 Everything here is plain instructions, bash/node scripts, and files. If
-you are Claude Code, also see `claude-code/` in the package root for the
-native skill manifest — it just points back here.
+you are Claude Code, also see `.claude/skills/local-marketing/SKILL.md` in
+the package root for the native skill manifest — it just points back here.
 
 ## Commands this skill implements
 
-Run these via `node <package_root>/skill/scripts/<name>.js` or the installed
-`local-marketing <subcommand>` CLI if available.
+Run these via `node <package_root>/skill/scripts/<name>.js`, the installed
+`local-marketing <subcommand>` CLI if available, or — once the skill is
+installed — the corresponding Claude Code slash command
+(`/local-marketing:init`, `/local-marketing:review`, etc.) or Codex CLI
+custom prompt (`/local-marketing-init`, `/local-marketing-review`, etc.).
+All three invoke the same underlying script; the slash commands/prompts are
+just a discoverable shortcut, not a different code path.
 
 | Subcommand | Purpose |
 | --- | --- |
@@ -37,13 +42,23 @@ Run these via `node <package_root>/skill/scripts/<name>.js` or the installed
 ## Init interview (run first, once)
 
 Follow the grilling pattern: one question at a time, offer a sensible default
-based on what you can find (e.g. by fetching the user's website), wait for
-their answer before continuing. Do not batch questions.
+based on what you can find, wait for their answer before continuing. Do not
+batch questions — including sub-parts of the same question (e.g. "from
+address," "from name," and "report recipient" are three separate turns, not
+one message with three asks). If the user gives a one-word answer like "ok"
+to something you bundled, that's a sign you batched — split it up and ask
+again one at a time.
 
 Cover, in order:
-1. Project name, one-line description, website URL.
-2. What the product actually does — pull detail out of the user, don't just
-   summarize the website homepage.
+1. Project name, website URL. As soon as you have the URL, fetch the live
+   site before asking anything else — repo READMEs and package.json
+   metadata can describe an earlier or aspirational version of the product,
+   not what's actually shipped. Ground every later question in what the
+   live site actually says, and if it contradicts the repo's own docs,
+   surface that mismatch to the user rather than silently picking one.
+2. One-line description and what the product actually does — propose a
+   description grounded in the live site, then pull correction/detail out
+   of the user rather than just repeating the homepage copy verbatim.
 3. Ideal customer profile: who buys this, what operational/business pain
    triggers a purchase, company size/type, geography.
 4. 2-4 candidate market segments (like the tuition-centre / enrichment /
@@ -53,9 +68,14 @@ Cover, in order:
 5. Priority geography and any compliance constraints for that market (e.g.
    Singapore DNC rules, CAN-SPAM, UK PECR/ICO B2B guidance) — flag these,
    don't silently skip.
-6. SMTP setup — point them at `docs/SMTP_SETUP.md`, walk them through
-   whichever provider they pick, collect host/port/username/from address
-   (never the password — that goes in an env var, tell them which one).
+6. SMTP setup — point them at `docs/SMTP_SETUP.md` and present the provider
+   options (Resend, Elastic Email, MailerSend, bring-your-own) as a plain
+   list with sign-up links so they can open each and decide; Resend is the
+   documented default recommendation for setup simplicity, but don't
+   comment on or editorialize about any other link (e.g. why it's included) —
+   just the option and the link. Walk them through whichever provider they
+   pick, collect host/port/username/from address (never the password —
+   that goes in an env var, tell them which one).
 7. Admin report email address (can be the same inbox).
 8. Safety defaults (bounce/complaint thresholds, ramp schedule, cadence days)
    — show the recommended values from `config/config.example.yaml` with a
@@ -64,11 +84,13 @@ Cover, in order:
 9. Where to put the data directory — default `~/marketing/<slug>/`, confirm
    or let them override.
 
-At the end: research the company/market using your own web search/fetch
-tools (this skill does not bundle a search API), write findings into the
-generated `PROJECT.md`, then run `scripts/init.js` to scaffold the directory,
-copy `config.example.yaml` → `config.yaml` filled in with their answers, and
-initialize the SQLite DB from `db/schema.sql`.
+You already fetched the live site in step 1 and used it to ground steps 2-5
+— consolidate those findings (plus anything from the ICP/segment
+conversation) into a generated `PROJECT.md`, then run `scripts/init.js` to
+scaffold the directory, copy `config.example.yaml` → `config.yaml` filled in
+with their answers, and initialize the SQLite DB from `db/schema.sql`. This
+skill does not bundle a search API — all research uses your own web
+search/fetch tools.
 
 ## Candidate sourcing stays human-curated
 
