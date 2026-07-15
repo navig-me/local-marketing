@@ -46,7 +46,7 @@ directory on your machine: a SQLite file, a YAML config, and two folders
 ### 1. Install the skill
 
 ```
-npx local-marketing install
+npx @navig-me/local-marketing install
 ```
 
 This prompts you to choose an agent target:
@@ -63,7 +63,7 @@ This prompts you to choose an agent target:
 To update later, re-run:
 
 ```
-npx local-marketing@latest install
+npx @navig-me/local-marketing@latest install
 ```
 
 ### 2. Run the init interview
@@ -122,25 +122,25 @@ Once initialized, the following commands operate on your data directory
 #    your agent to "add these candidates to local-marketing".
 
 # 2. Score curated candidates against the active segment's brief
-npx local-marketing research /path/to/data-dir
+npx @navig-me/local-marketing research /path/to/data-dir
 
 # 3. Draft the 4-email sequence for newly-qualified prospects
-npx local-marketing draft /path/to/data-dir
+npx @navig-me/local-marketing draft /path/to/data-dir
 
 # 4. Review what was drafted
-npx local-marketing review /path/to/data-dir
+npx @navig-me/local-marketing review /path/to/data-dir
 
 # 5. Approve individual drafts (or just move the file into approved/ yourself)
-npx local-marketing approve /path/to/data-dir/pending_review/2026-07-15_acme_day1.md
+npx @navig-me/local-marketing approve /path/to/data-dir/pending_review/2026-07-15_acme_day1.md
 
 # 6. Send whatever is approved and due today (checks the circuit breaker first)
-npx local-marketing send /path/to/data-dir
+npx @navig-me/local-marketing send /path/to/data-dir
 
 # 7. Pull and classify replies/bounces/complaints (never auto-replies)
-npx local-marketing triage /path/to/data-dir
+npx @navig-me/local-marketing triage /path/to/data-dir
 
 # 8. Generate + email the weekly funnel report
-npx local-marketing report /path/to/data-dir
+npx @navig-me/local-marketing report /path/to/data-dir
 ```
 
 ### Running it on a schedule
@@ -151,11 +151,11 @@ A cadence matching the reference marketing plan this skill is based on:
 
 ```cron
 # crontab -e
-0 8 * * MON     npx local-marketing research  /path/to/data-dir
-0 9 * * *       npx local-marketing draft     /path/to/data-dir
-0 10 * * *      npx local-marketing send      /path/to/data-dir
-0 * * * *       npx local-marketing triage    /path/to/data-dir
-0 9 * * MON     npx local-marketing report    /path/to/data-dir
+0 8 * * MON     npx @navig-me/local-marketing research  /path/to/data-dir
+0 9 * * *       npx @navig-me/local-marketing draft     /path/to/data-dir
+0 10 * * *      npx @navig-me/local-marketing send      /path/to/data-dir
+0 * * * *       npx @navig-me/local-marketing triage    /path/to/data-dir
+0 9 * * MON     npx @navig-me/local-marketing report    /path/to/data-dir
 ```
 
 Nothing sends unattended beyond what you've already approved — `send` only

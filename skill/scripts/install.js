@@ -39,8 +39,8 @@ export async function installFlow({ pkgRoot, skillRoot }) {
   } else {
     console.log("\nPoint your agent at this folder's SKILL.md as its instructions entrypoint.");
   }
-  console.log("\nNext: run `npx local-marketing init` inside the project you want to market.");
-  console.log("To update later, re-run `npx local-marketing@latest install`.");
+  console.log("\nNext: run `npx @navig-me/local-marketing init` inside the project you want to market.");
+  console.log("To update later, re-run `npx @navig-me/local-marketing@latest install`.");
 }
 
 function copyDir(src, dest) {

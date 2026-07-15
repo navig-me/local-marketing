@@ -12,7 +12,7 @@ export async function checkUpdate({ pkgRoot }) {
 
   let latest;
   try {
-    const res = await fetch(`https://registry.npmjs.org/${name}/latest`);
+    const res = await fetch(`https://registry.npmjs.org/${encodeURIComponent(name).replace("%40", "@")}/latest`);
     if (!res.ok) throw new Error(`registry returned ${res.status}`);
     const data = await res.json();
     latest = data.version;
@@ -28,5 +28,5 @@ export async function checkUpdate({ pkgRoot }) {
   }
 
   console.log(`A newer version is available: v${version} -> v${latest}`);
-  console.log(`Update with: npx local-marketing@latest install`);
+  console.log(`Update with: npx ${name}@latest install`);
 }

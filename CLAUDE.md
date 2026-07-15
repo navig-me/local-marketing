@@ -6,7 +6,7 @@ marketing/outreach skill. See `README.md` for the product description and
 
 ## Layout
 
-- `bin/local-marketing.js` — CLI entrypoint (`npx local-marketing ...`).
+- `bin/local-marketing.js` — CLI entrypoint (`npx @navig-me/local-marketing ...`).
 - `skill/` — the actual skill: `SKILL.md` (instructions), `scripts/` (node
   helpers: db, init, review, approve, send, report, install), `playbooks/`
   (research/copy-draft/triage prompts), `db/schema.sql`, `config/` (YAML

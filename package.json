@@ -1,5 +1,5 @@
 {
-  "name": "local-marketing",
+  "name": "@navig-me/local-marketing",
   "version": "0.1.0",
   "description": "Local-only, agent-agnostic marketing skill: init interview, ICP/company research, SQLite-backed prospect CRM, file-approved outbound sequences over SMTP.",
   "type": "module",
@@ -26,6 +26,9 @@
     "agent"
   ],
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "author": "Mihir Khandekar",
   "repository": {
     "type": "git",
