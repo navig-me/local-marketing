@@ -112,8 +112,10 @@ Add these to your shell profile (`~/.zshrc`, `~/.bashrc`) so they persist.
 
 ## Usage
 
-Once initialized, the following commands operate on your data directory
-(pass its path explicitly, or run them from inside it):
+Once you've run `init` once, every command below works with **no path
+needed** — it automatically uses the project you just set up. (If you ever
+set up more than one project, pass the path to disambiguate; the command
+that scaffolded it also tells you where it saved things.)
 
 ```bash
 # 1. Add candidate businesses to the SQLite `prospects` table yourself
@@ -122,40 +124,44 @@ Once initialized, the following commands operate on your data directory
 #    your agent to "add these candidates to local-marketing".
 
 # 2. Score curated candidates against the active segment's brief
-npx @navig-me/local-marketing research /path/to/data-dir
+npx @navig-me/local-marketing research
 
 # 3. Draft the 4-email sequence for newly-qualified prospects
-npx @navig-me/local-marketing draft /path/to/data-dir
+npx @navig-me/local-marketing draft
 
 # 4. Review what was drafted
-npx @navig-me/local-marketing review /path/to/data-dir
+npx @navig-me/local-marketing review
 
 # 5. Approve individual drafts (or just move the file into approved/ yourself)
-npx @navig-me/local-marketing approve /path/to/data-dir/pending_review/2026-07-15_acme_day1.md
+npx @navig-me/local-marketing approve pending_review/2026-07-15_acme_day1.md
 
 # 6. Send whatever is approved and due today (checks the circuit breaker first)
-npx @navig-me/local-marketing send /path/to/data-dir
+npx @navig-me/local-marketing send
 
 # 7. Pull and classify replies/bounces/complaints (never auto-replies)
-npx @navig-me/local-marketing triage /path/to/data-dir
+npx @navig-me/local-marketing triage
 
 # 8. Generate + email the weekly funnel report
-npx @navig-me/local-marketing report /path/to/data-dir
+npx @navig-me/local-marketing report
 ```
+
+If you're scripting or running from somewhere else on the machine, every
+command also accepts the project's folder as an optional final argument,
+e.g. `npx @navig-me/local-marketing send /path/to/that/folder`.
 
 ### Running it on a schedule
 
-Each command is a one-shot script, meant to be triggered by `cron`,
-`launchd`, or `systemd` timers — there's no persistent background process.
-A cadence matching the reference marketing plan this skill is based on:
+`init` asks you, at the end, whether to turn on the automatic schedule —
+say yes and it's done, nothing more to configure. Behind the scenes this
+installs a `cron` entry (a built-in macOS/Linux feature that runs commands
+at set times, even with no app open) for each step: research, draft, send,
+triage, report — matching the cadence from the reference marketing plan
+this skill is based on. Re-running `init` for the same project updates its
+schedule instead of duplicating it; nothing else in your crontab is
+touched. You can also turn it on later, or update it, with:
 
-```cron
-# crontab -e
-0 8 * * MON     npx @navig-me/local-marketing research  /path/to/data-dir
-0 9 * * *       npx @navig-me/local-marketing draft     /path/to/data-dir
-0 10 * * *      npx @navig-me/local-marketing send      /path/to/data-dir
-0 * * * *       npx @navig-me/local-marketing triage    /path/to/data-dir
-0 9 * * MON     npx @navig-me/local-marketing report    /path/to/data-dir
+```
+npx @navig-me/local-marketing cron-install
 ```
 
 Nothing sends unattended beyond what you've already approved — `send` only
