@@ -1,10 +1,10 @@
 {
   "name": "@navig-me/local-marketing",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "Turn Claude Code (or any headless CLI agent) into a local, human-approved customer-acquisition system: ICP interview, market research, SQLite prospect CRM, drafted outreach sequences you approve before anything sends over SMTP. No hosted CRM, no cloud database, no subscription.",
   "type": "module",
   "bin": {
-    "local-marketing": "./bin/local-marketing.js"
+    "local-marketing": "bin/local-marketing.js"
   },
   "files": [
     "bin",
