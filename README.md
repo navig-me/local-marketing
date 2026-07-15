@@ -110,6 +110,9 @@ will:
 - scaffold that directory: `config.yaml`, the SQLite DB, and
   `pending_review/`, `approved/`, `segments/`, `reports/`, `tasks/` folders
 
+If you run `npx @navig-me/local-marketing init` directly, it uses your
+current directory as the data directory and makes it your default project.
+
 ### 3. Set up SMTP
 
 You need SMTP host/port/username/password plus, ideally, a REST API key

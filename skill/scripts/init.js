@@ -26,7 +26,14 @@ export async function init({ skillRoot, answersPath }) {
     config = deepMerge(exampleConfig, answers);
   }
 
-  const dataDir = config.project?.data_dir || path.join(process.env.HOME, "marketing", config.project?.slug || "unnamed-project");
+  // `init` is also a useful direct CLI command. When no agent interview has
+  // supplied an explicit data directory, use the folder the user is working
+  // in instead of creating an unrelated ~/marketing/unnamed-project folder.
+  const isDirectInit = !answersPath;
+  const dataDir = config.project?.data_dir || (isDirectInit
+    ? process.cwd()
+    : path.join(process.env.HOME, "marketing", config.project?.slug || "unnamed-project"));
+  const slug = config.project?.slug || path.basename(dataDir);
 
   const existingConfigPath = path.join(dataDir, "config.yaml");
   const isExisting = fs.existsSync(existingConfigPath);
@@ -48,7 +55,7 @@ export async function init({ skillRoot, answersPath }) {
   fs.mkdirSync(path.join(dataDir, "reports"), { recursive: true });
   fs.mkdirSync(path.join(dataDir, "tasks"), { recursive: true });
 
-  config.project = { ...config.project, data_dir: dataDir };
+  config.project = { ...config.project, slug, data_dir: dataDir };
   fs.writeFileSync(path.join(dataDir, "config.yaml"), yaml.dump(config));
 
   const db = openDb(dataDir);
@@ -61,14 +68,11 @@ export async function init({ skillRoot, answersPath }) {
   const passwordVar = config.smtp?.password_env_var || "LOCAL_MARKETING_SMTP_PASSWORD";
   const apiKeyVar = config.smtp?.api_key_env_var || "LOCAL_MARKETING_SMTP_API_KEY";
 
-  const slug = config.project?.slug || path.basename(dataDir);
   const regSpinner = spinner("Remembering this project so you don't have to type its location again...").start();
-  const registry = registerProject(slug, dataDir);
+  const registry = registerProject(slug, dataDir, { makeDefault: true });
   const isDefault = registry.defaultSlug === slug;
   if (isDefault) {
     regSpinner.succeed("Saved. From now on, commands will use this project automatically.");
-  } else {
-    regSpinner.warn(`Saved, but "${registry.defaultSlug}" is still your default project (you have more than one set up).`);
   }
 
   heading("Automatic schedule");

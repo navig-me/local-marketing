@@ -19,12 +19,13 @@ export function writeRegistry(registry) {
   fs.writeFileSync(REGISTRY_PATH, JSON.stringify(registry, null, 2));
 }
 
-// Registers/updates a project and makes it the default if none is set yet
-// (or if there's currently only one project registered).
-export function registerProject(slug, dataDir) {
+// Registers/updates a project. Setup makes the project it just initialized
+// the default; callers that merely discover a project can preserve the
+// existing default.
+export function registerProject(slug, dataDir, { makeDefault = false } = {}) {
   const registry = readRegistry();
   registry.projects[slug] = dataDir;
-  if (!registry.defaultSlug || Object.keys(registry.projects).length === 1) {
+  if (makeDefault || !registry.defaultSlug || Object.keys(registry.projects).length === 1) {
     registry.defaultSlug = slug;
   }
   writeRegistry(registry);

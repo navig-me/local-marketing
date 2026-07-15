@@ -5,21 +5,26 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import yaml from "js-yaml";
 
 const testDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(testDir, "..");
 const cli = path.join(repoRoot, "bin", "local-marketing.js");
 
+function runCli(args, { cwd, home, input }) {
+  return spawnSync(process.execPath, [cli, ...args], {
+    cwd,
+    env: { ...process.env, HOME: home, NO_COLOR: "1" },
+    input,
+    encoding: "utf8",
+  });
+}
+
 test("install accepts multiple targets and installs Claude and Codex integrations", (t) => {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), "local-marketing-install-"));
   t.after(() => fs.rmSync(home, { recursive: true, force: true }));
 
-  const result = spawnSync(process.execPath, [cli, "install"], {
-    cwd: repoRoot,
-    env: { ...process.env, HOME: home, NO_COLOR: "1" },
-    input: "1,2\n",
-    encoding: "utf8",
-  });
+  const result = runCli(["install"], { cwd: repoRoot, home, input: "1,2\n" });
 
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /Choose one or more/);
@@ -27,4 +32,29 @@ test("install accepts multiple targets and installs Claude and Codex integration
   assert.ok(fs.existsSync(path.join(home, ".claude", "commands", "local-marketing", "init.md")));
   assert.ok(fs.existsSync(path.join(home, ".agents", "skills", "local-marketing", "SKILL.md")));
   assert.ok(fs.existsSync(path.join(home, ".codex", "prompts", "local-marketing-init.md")));
+});
+
+test("bare init uses the current directory and makes it the default project", (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "local-marketing-init-"));
+  const home = path.join(root, "home");
+  const projectDir = path.join(root, "new-project");
+  fs.mkdirSync(projectDir, { recursive: true });
+  fs.mkdirSync(path.join(home, ".local-marketing"), { recursive: true });
+  fs.writeFileSync(
+    path.join(home, ".local-marketing", "projects.json"),
+    JSON.stringify({ defaultSlug: "scout-select", projects: { "scout-select": "/tmp/scout-select" } })
+  );
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+
+  const result = runCli(["init"], { cwd: projectDir, home, input: "n\n" });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stderr, /Saved\. From now on, commands will use this project automatically\./);
+  const config = yaml.load(fs.readFileSync(path.join(projectDir, "config.yaml"), "utf8"));
+  assert.equal(config.project.slug, path.basename(projectDir));
+  const resolvedProjectDir = fs.realpathSync(projectDir);
+  assert.equal(config.project.data_dir, resolvedProjectDir);
+  const registry = JSON.parse(fs.readFileSync(path.join(home, ".local-marketing", "projects.json"), "utf8"));
+  assert.equal(registry.defaultSlug, path.basename(projectDir));
+  assert.equal(registry.projects[path.basename(projectDir)], resolvedProjectDir);
 });
