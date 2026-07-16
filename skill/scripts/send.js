@@ -69,9 +69,10 @@ export async function send({ dataDir }) {
       skipped++;
       continue;
     }
-    const body = fs.readFileSync(row.draft_path, "utf8");
-    const subjectMatch = body.match(/^Subject:\s*(.+)$/m);
+    const raw = fs.readFileSync(row.draft_path, "utf8");
+    const subjectMatch = raw.match(/^Subject:\s*(.+)$/m);
     const subject = subjectMatch ? subjectMatch[1] : `Re: ${row.business_name}`;
+    const body = raw.replace(/^Subject:\s*.+\n+/, "");
 
     const s = spinner(`Sending to ${row.email}...`).start();
     try {
@@ -80,6 +81,7 @@ export async function send({ dataDir }) {
         to: row.email,
         subject,
         text: body,
+        html: bodyToHtml(body),
       });
       db.prepare(
         `INSERT INTO send_log (prospect_id, sequence_step, status, provider_message_id) VALUES (?, ?, 'sent', ?)`
@@ -95,6 +97,27 @@ export async function send({ dataDir }) {
 
   console.log();
   success(`${sent} sent` + (skipped ? `, ${skipped} skipped` : "") + (failed ? `, ${chalk.red(failed + " failed")}` : ""));
+}
+
+// Plain-text drafts, rendered as minimal HTML so the site link is a real
+// anchor tag — no template, no images/logo, just escaped text + <p>/<br>
+// and auto-linked URLs/bare domains, kept close to how the plain text reads.
+function bodyToHtml(text) {
+  const escape = (s) =>
+    s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const linked = escape(text).replace(
+    /\b((?:https?:\/\/)?[a-z0-9-]+(?:\.[a-z0-9-]+)+(?:\/[^\s]*)?)\b/gi,
+    (match) => {
+      if (!/\.[a-z]{2,}/i.test(match)) return match;
+      const href = /^https?:\/\//i.test(match) ? match : `https://${match}`;
+      return `<a href="${href}">${match}</a>`;
+    }
+  );
+  const paragraphs = linked
+    .split(/\n\s*\n/)
+    .map((p) => `<p>${p.replace(/\n/g, "<br>")}</p>`)
+    .join("\n");
+  return `<div>${paragraphs}</div>`;
 }
 
 function checkCircuitBreaker(db, config) {

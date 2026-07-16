@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { openDb } from "./db.js";
 import { info, success, warn, chalk } from "./ui.js";
 import { FriendlyError } from "./util.js";
 
@@ -22,5 +23,17 @@ export async function approve({ file }) {
   info(chalk.dim(`  from: ${abs}`));
   info(chalk.dim(`  to:   ${dest}`));
   fs.renameSync(abs, dest);
+
+  // dataDir is two levels up from the file (dataDir/pending_review/<file>).
+  const dataDir = path.dirname(path.dirname(abs));
+  const db = openDb(dataDir);
+  const row = db.prepare(`SELECT id FROM sequence_state WHERE draft_path = ?`).get(abs);
+  if (row) {
+    db.prepare(`UPDATE sequence_state SET status = 'approved', draft_path = ?, updated_at = datetime('now') WHERE id = ?`).run(dest, row.id);
+  } else {
+    warn(`Moved the file, but couldn't find a matching sequence_state row for it — "send" may not pick this up. Check the database.`);
+  }
+  db.close();
+
   success(`Approved — this will go out on its scheduled day.`);
 }
