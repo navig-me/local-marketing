@@ -90,7 +90,15 @@ export async function uninstallCron({ slug }) {
 }
 
 function buildCronBlock({ dataDir, slug }) {
-  const cmd = (sub) => `${cronCommandPrefix} ${sub} "${dataDir}"`;
+  // cron never inherits the user's shell environment (no .zshrc/.bashrc
+  // sourcing), so SMTP secrets exported there are invisible here. If the
+  // project has a <dataDir>/.env (created per docs/SMTP_SETUP.md, already
+  // gitignored by init.js), source it before running — this is the only
+  // way scheduled send/research/draft/triage can see the credentials.
+  const cmd = (sub) => {
+    const inner = `set -a; [ -f "${dataDir}/.env" ] && . "${dataDir}/.env"; set +a; ${cronCommandPrefix} ${sub} "${dataDir}"`;
+    return `/bin/sh -c '${inner}'`;
+  };
   return [
     START_MARKER(slug),
     `0 8 * * MON ${cmd("research")}`,

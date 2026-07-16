@@ -15,6 +15,26 @@ Always set up SPF, DKIM, and DMARC on a dedicated sending subdomain (e.g.
 Every provider below has a guided DNS wizard for this — use it before sending
 at any real volume.
 
+## Where the secrets actually need to live
+
+Exporting `LOCAL_MARKETING_SMTP_PASSWORD` / `LOCAL_MARKETING_SMTP_API_KEY` in
+your shell profile (`.zshrc`/`.bashrc`) is enough for commands you run by
+hand, but **cron never sources your shell profile** — a scheduled `send` will
+fail with a missing-credentials error even if manual runs work fine.
+
+For the automatic schedule (`cron-install`) to work, put the same two
+`export` lines in a `.env` file in the project's data directory (e.g.
+`<data_dir>/.env`), and lock its permissions down:
+
+```bash
+chmod 600 <data_dir>/.env
+```
+
+`init.js` already adds `.env`/`*.env` to the project's `.gitignore`, and
+`cron-install` sources this file automatically before every scheduled run if
+it exists — no other configuration needed. Keep the shell-profile export too
+if you also want to run commands manually.
+
 ---
 
 ## Option 1: Elastic Email
