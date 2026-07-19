@@ -1,12 +1,13 @@
 import { execFileSync } from "node:child_process";
 import readline from "node:readline/promises";
-import { stdin, stdout } from "node:process";
+import { stdin, stdout, execPath } from "node:process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chalk, success, info } from "./ui.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const cronNodeBin = path.dirname(execPath);
 
 // Cron entries must never point at a file path that can disappear between
 // runs. A path resolved via __dirname is fine for a global `npm install -g`,
@@ -89,14 +90,17 @@ export async function uninstallCron({ slug }) {
   success(`Automatic schedule turned off for "${slug}". Nothing runs on its own until you turn it back on.`);
 }
 
-function buildCronBlock({ dataDir, slug }) {
+export function buildCronBlock({ dataDir, slug }) {
   // cron never inherits the user's shell environment (no .zshrc/.bashrc
   // sourcing), so SMTP secrets exported there are invisible here. If the
   // project has a <dataDir>/.env (created per docs/SMTP_SETUP.md, already
   // gitignored by init.js), source it before running — this is the only
   // way scheduled send/research/draft/triage can see the credentials.
+  // It also has a minimal PATH, so preserve the Node runtime that installed
+  // this schedule. This supports Node managed by nvm, fnm, and similar tools.
   const cmd = (sub) => {
-    const inner = `set -a; [ -f "${dataDir}/.env" ] && . "${dataDir}/.env"; set +a; ${cronCommandPrefix} ${sub} "${dataDir}"`;
+    const logPath = `${dataDir}/logs/cron-${sub}.log`;
+    const inner = `set -a; [ -f "${dataDir}/.env" ] && . "${dataDir}/.env"; set +a; PATH="${cronNodeBin}:/usr/local/bin:/usr/bin:/bin"; export PATH; mkdir -p "${dataDir}/logs"; ${cronCommandPrefix} ${sub} "${dataDir}" >> "${logPath}" 2>&1`;
     return `/bin/sh -c '${inner}'`;
   };
   return [

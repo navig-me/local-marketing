@@ -7,6 +7,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 import yaml from "js-yaml";
 import { buildPrompt } from "../skill/scripts/draft.js";
+import { buildCronBlock } from "../skill/scripts/cron.js";
 
 const testDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(testDir, "..");
@@ -99,4 +100,15 @@ test("draft prompts include approved copy instructions without relaxing copy rul
   assert.match(prompt, /Approved project copy instructions/);
   assert.match(prompt, /Use a warm, concise tone/);
   assert.match(prompt, /cannot relax safety, truthfulness, personalization, or approval requirements/);
+});
+
+test("cron jobs preserve the current Node runtime and write per-job logs", () => {
+  const dataDir = "/tmp/local-marketing-project";
+  const block = buildCronBlock({ dataDir, slug: "example" });
+
+  assert.match(block, new RegExp(`PATH="${path.dirname(process.execPath)}:`));
+  for (const subcommand of ["research", "draft", "send", "triage", "report"]) {
+    assert.match(block, new RegExp(`mkdir -p "${dataDir}/logs"`));
+    assert.match(block, new RegExp(`cron-${subcommand}\\.log`));
+  }
 });
