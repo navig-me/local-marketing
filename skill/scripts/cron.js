@@ -8,6 +8,7 @@ import { chalk, success, info } from "./ui.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const cronNodeBin = path.dirname(execPath);
+const cronHome = process.env.HOME || process.env.USERPROFILE;
 
 // Cron entries must never point at a file path that can disappear between
 // runs. A path resolved via __dirname is fine for a global `npm install -g`,
@@ -100,8 +101,24 @@ export function buildCronBlock({ dataDir, slug }) {
   // this schedule. This supports Node managed by nvm, fnm, and similar tools.
   const cmd = (sub) => {
     const logPath = `${dataDir}/logs/cron-${sub}.log`;
-    const inner = `set -a; [ -f "${dataDir}/.env" ] && . "${dataDir}/.env"; set +a; PATH="${cronNodeBin}:/usr/local/bin:/usr/bin:/bin"; export PATH; mkdir -p "${dataDir}/logs"; ${cronCommandPrefix} ${sub} "${dataDir}" >> "${logPath}" 2>&1`;
-    return `/bin/sh -c '${inner}'`;
+    const nvmInit = cronHome
+      ? `[ -s ${shellQuote(path.join(cronHome, ".nvm", "nvm.sh"))} ] && . ${shellQuote(path.join(cronHome, ".nvm", "nvm.sh"))} >/dev/null 2>&1;`
+      : "";
+    const inner = [
+      `mkdir -p ${shellQuote(path.dirname(logPath))};`,
+      `exec >> ${shellQuote(logPath)} 2>&1;`,
+      `echo "[$(date '+%Y-%m-%dT%H:%M:%S%z')] local-marketing ${sub} started";`,
+      `set -a; [ -f ${shellQuote(path.join(dataDir, ".env"))} ] && . ${shellQuote(path.join(dataDir, ".env"))}; set +a;`,
+      // Keep the Node runtime that installed the schedule, then load nvm when
+      // available so a later nvm-managed Node upgrade does not make cron lose
+      // npx again. Cron never sources the user's interactive shell profile.
+      `PATH=${shellQuote(`${cronNodeBin}:/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin`)}; export PATH;`,
+      nvmInit,
+      `if ! command -v npx >/dev/null 2>&1; then echo "local-marketing: npx is unavailable; PATH=$PATH"; exit 127; fi;`,
+      `${cronCommandPrefix} ${sub} ${shellQuote(dataDir)};`,
+      `status=$?; echo "[$(date '+%Y-%m-%dT%H:%M:%S%z')] local-marketing ${sub} exited $status"; exit $status;`,
+    ].filter(Boolean).join(" ");
+    return `/bin/sh -c ${shellQuote(inner)}`;
   };
   return [
     START_MARKER(slug),
@@ -112,6 +129,10 @@ export function buildCronBlock({ dataDir, slug }) {
     `0 9 * * MON ${cmd("report")}`,
     END_MARKER(slug),
   ].join("\n");
+}
+
+function shellQuote(value) {
+  return `'${String(value).replace(/'/g, `'"'"'`)}'`;
 }
 
 function writeCronBlock(slug, block) {

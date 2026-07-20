@@ -106,9 +106,21 @@ test("cron jobs preserve the current Node runtime and write per-job logs", () =>
   const dataDir = "/tmp/local-marketing-project";
   const block = buildCronBlock({ dataDir, slug: "example" });
 
-  assert.match(block, new RegExp(`PATH="${path.dirname(process.execPath)}:`));
+  assert.ok(block.includes(path.dirname(process.execPath)));
+  assert.match(block, /command -v npx/);
+  assert.match(block, /local-marketing send started/);
+  assert.match(block, /local-marketing send exited/);
   for (const subcommand of ["research", "draft", "send", "triage", "report"]) {
-    assert.match(block, new RegExp(`mkdir -p "${dataDir}/logs"`));
+    assert.ok(block.includes(`${dataDir}/logs`));
     assert.match(block, new RegExp(`cron-${subcommand}\\.log`));
   }
+});
+
+test("cron jobs safely quote project directories with spaces or apostrophes", () => {
+  const dataDir = "/tmp/teacher's studio/marketing project";
+  const block = buildCronBlock({ dataDir, slug: "example" });
+
+  assert.match(block, /\/tmp\/teacher/);
+  assert.match(block, /'"'"'/);
+  assert.doesNotMatch(block, /\/tmp\/teacher's studio\/marketing project/);
 });
